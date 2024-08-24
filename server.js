@@ -20,39 +20,34 @@ app.get('/', (res) => {
     res.send('Welcome to ride buddy!')
 })
 
-app.post('/createUser', (req, res) => {
+app.post('/createUser', async (req, res) => {
     const user = new User(req.body)
     try {
-        user.save()
+        await user.save()
+        res.status(201).json(user);
     }
     catch (err) {
-        throw err;
+        console.error(err);
+        res.status(500).send('Error creating user');
     }
-    res.send(req.body)
 })
 
-app.post('/createPost', (req, res) => {
+app.post('/createPost', async (req, res) => {
     const { user, from, to, date, time, fee } = req.body
 
-    // Replace space with 'T' to make it ISO 8601 compatible
     const isoDateTimeStr = date + 'T' + time + ':00.000Z';
-    console.log(isoDateTimeStr)
-
-    // Create a Date object
     const dateTime = new Date(isoDateTimeStr);
-    console.log(dateTime)
-    console.log(typeof (dateTime))
 
     const postParams = { user, from, to, dateTime, fee }
     const post = new Post(postParams)
     try {
-        console.log(post)
-        post.save()
+        await post.save()
+        res.status(201).json(post);
     }
     catch (err) {
-        throw err;
+        console.error(err);
+        res.status(500).send('Error creating post');
     }
-    res.send(req.body)
 })
 
 app.get('/getPosts', async (req, res) => {
@@ -71,36 +66,45 @@ app.get('/getPosts', async (req, res) => {
                 time: time
             };
         });
-        res.send(modifiedPosts);
+        res.json(modifiedPosts);
     } catch (error) {
         console.error(error);
-        res.sendStatus(500).send('Server error');
+        res.status(500).send('Server error');
     }
 });
 
 app.post('/deletePost', async (req, res) => {
 
-    const postId = req.body._id;
-    const result = await Post.deleteOne({ "_id": ObjectId.createFromHexString(postId) });
+    try {
+        const postId = req.body._id;
+        if (!ObjectId.isValid(postId)) {
+            return res.status(400).send('Invalid ID');
+        }
+        const result = await Post.deleteOne({ "_id": ObjectId.createFromHexString(postId) });
 
-    if (result.deletedCount === 0) {
-        return res.status(404).send('Post not found');
+        if (result.deletedCount === 0) {
+            return res.status(404).send('Post not found');
+        }
+
+        // Optionally, return the remaining posts
+        const posts = await Post.find({});
+        const modifiedPosts = posts.map(post => {
+            const date = post.dateTime.toISOString().substring(0, 10);
+            const time = post.dateTime.toISOString().substring(11, 16);
+
+            return {
+                ...post.toObject(),
+                date: date.split("-").reverse().join("-"),
+                time: time
+            };
+        });
+
+        res.json(modifiedPosts);
     }
-
-    // Optionally, return the remaining posts
-    const posts = await Post.find({});
-    const modifiedPosts = posts.map(post => {
-        const date = post.dateTime.toISOString().substring(0, 10);
-        const time = post.dateTime.toISOString().substring(11, 16);
-
-        return {
-            ...post.toObject(),
-            date: date.split("-").reverse().join("-"),
-            time: time
-        };
-    });
-
-    res.json(modifiedPosts);
+    catch (error) {
+        console.error(error);
+        res.status(500).send('Error deleting post');
+    }
 })
 
 app.post('/login', async (req, res) => {
@@ -110,18 +114,17 @@ app.post('/login', async (req, res) => {
         if (user) {
             const result = password === user.password;
             if (result) {
-                console.log('success')
                 res.send(user.name)
             } else {
-                res.status(400).json({ error: "password doesn't match" });
+                res.status(400).json({ error: "Password does not match" });
             }
         } else {
-            res.status(400).json({ error: "User doesn't exist" });
+            res.status(400).json({ error: "User does not exist" });
         }
     }
-    catch (err) {
-        throw err;
-
+    catch (error) {
+        console.error(error);
+        res.status(500).send('Error logging in');
     }
 })
 app.listen(port, () => {

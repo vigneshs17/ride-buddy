@@ -1,8 +1,4 @@
-import { NavLink } from "react-router-dom";
-import UserProfile from "../UserProfile";
-
 export default function NavBar() {
-    console.log(UserProfile.getName())
     return (
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <a class="navbar-brand" href="#">Ride Buddy</a>
