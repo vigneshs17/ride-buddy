@@ -6,6 +6,7 @@ import NavBar from './components/Navbar';
 import Login from './components/Login';
 import CreateUser from './components/CreateUser';
 import ViewPosts from './components/ViewPosts';
+import EditPost from './components/EditPost';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/createUser" element={<CreateUser />} />
           <Route path="/createPost" element={<CreatePost />} />
           <Route path="/viewPosts" element={<ViewPosts />} />
+          <Route path="/editPost" element={<EditPost />} />
         </Routes>
       </BrowserRouter>
     </>

@@ -20,6 +20,11 @@ app.get('/', (res) => {
     res.send('Welcome to ride buddy!')
 })
 
+function formatDateTime(date, time) {
+    const isoDateTimeStr = date + 'T' + time + ':00.000Z';
+    return new Date(isoDateTimeStr)
+}
+
 app.post('/createUser', async (req, res) => {
     const user = new User(req.body)
     try {
@@ -35,8 +40,7 @@ app.post('/createUser', async (req, res) => {
 app.post('/createPost', async (req, res) => {
     const { user, from, to, date, time, fee } = req.body
 
-    const isoDateTimeStr = date + 'T' + time + ':00.000Z';
-    const dateTime = new Date(isoDateTimeStr);
+    const dateTime = formatDateTime(date, time)
 
     const postParams = { user, from, to, dateTime, fee }
     const post = new Post(postParams)
@@ -62,8 +66,8 @@ app.get('/getPosts', async (req, res) => {
             // Return a new object with the added date and time properties
             return {
                 ...post.toObject(), // Convert Mongoose Document to plain object
-                date: date.split("-").reverse().join("-"),
-                time: time
+                date,
+                time
             };
         });
         res.json(modifiedPosts);
@@ -72,6 +76,26 @@ app.get('/getPosts', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+app.post('/editPost', async (req, res) => {
+    try {
+        const { user, id, from, to, date, time, fee } = req.body
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send('Invalid ID');
+        }
+        const dateTime = formatDateTime(date, time)
+        const result = await Post.updateOne({ "_id": ObjectId.createFromHexString(id) }, { user: user, from: from, to: to, dateTime: dateTime, fee: fee })
+        if (result.deletedCount === 0) {
+            return res.status(404).send('Post not found');
+        }
+        const post = await Post.find({ "_id": ObjectId.createFromHexString(id) });
+        res.status(200).json(post)
+    }
+    catch (error) {
+        console.error(error)
+        res.status(500).send('Server error')
+    }
+})
 
 app.post('/deletePost', async (req, res) => {
 
